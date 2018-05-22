@@ -1,6 +1,8 @@
 {
   "ExpandedNodes": [
-    ""
+    "",
+    "\\interval"
   ],
+  "SelectedNode": "\\interval\\interval.cpp",
   "PreviewInSolutionExplorer": false
 }

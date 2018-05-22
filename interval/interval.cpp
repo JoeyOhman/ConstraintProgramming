@@ -55,7 +55,7 @@ protected:
 		// You might need more information, please add here
 
 		/* Initialize description for brancher b, number of
-		 *  alternatives a, position p, and ???.
+		 *  alternatives a, position p, and splitPos v.
 		 */
 		Description(const Brancher& b, unsigned int a, int p, int v)
 			: Choice(b, a), pos(p), val(v) {}
@@ -96,11 +96,13 @@ public:
 	// Check status of brancher, return true if alternatives left
 	virtual bool status(const Space& home) const {
 
-		int subIntervalSize = 0;
 		for (int i = start; i < x.size(); i++) {
 			if (!x[i].assigned()) {
-				subIntervalSize = w[i] - floor(p*w[i]);
-				if (subIntervalSize <= x[i].size()) {
+				int subIntervalSize = w[i] - floor(p*w[i]);
+				int domainInterval = x[i].max() - x[i].min() + 1;
+				
+				if (subIntervalSize <= domainInterval) {
+					start = i; // Start from here next time, could not branch on any x[j] for j < i
 					return true;
 				}
 			}
@@ -111,18 +113,27 @@ public:
 	}
 	// Return choice as description
 	virtual const Choice* choice(Space& home) {
+		/* 
+		According to MPG, the choice function of a space must be called directly after status.
+		Therefore, we are assuming that the start variable has just been set and therefore do not loop or check
+		for conditions again. 
+		*/
+		int subIntervalSize = w[start] - floor(p*w[start]);
+		return new Description(*this, 2, start, x[start].min() + subIntervalSize);
 
-		int subIntervalSize = 0;
+		/* NOT NEEDED WHEN USING THE START VARIABLE IMPROVEMENT
 		for (int i = start; i < x.size(); i++) {
 			if (!x[i].assigned()) {
-				subIntervalSize = w[i] - floor(p*w[i]);
-				if (subIntervalSize <= x[i].size()) {
-					return new Description(*this, 2, i, subIntervalSize);
-				}
+				int subIntervalSize = w[i] - floor(p*w[i]);
+				int domainInterval = x[i].max() - x[i].min() + 1;
+				
+				if (subIntervalSize <= domainInterval)
+					return new Description(*this, 2, i, x[i].min() + subIntervalSize);
 			}
 		}
 		GECODE_NEVER; // Since we check for this in the status function, this code should never be executed
 		return NULL;
+		*/
 	}
 	// Construct choice from archive e
 	virtual const Choice* choice(const Space&, Archive& e) {
@@ -137,11 +148,11 @@ public:
 		const Choice& c,
 		unsigned int a) {
 		const Description& d = static_cast<const Description&>(c);
-		int pos = d.pos; int subIntervalSize = d.val;
+		int pos = d.pos; int splitPos = d.val;
 		if (a == 0)
-			return me_failed(x[pos].lq(home, x[pos].min() + subIntervalSize)) ? ES_FAILED : ES_OK;
+			return me_failed(x[pos].lq(home, splitPos)) ? ES_FAILED : ES_OK;
 		else
-			return me_failed(x[pos].gr(home, x[pos].min() + subIntervalSize)) ? ES_FAILED : ES_OK;
+			return me_failed(x[pos].gr(home, splitPos)) ? ES_FAILED : ES_OK;
 	}
 	// Print some information on stream o (used by Gist, from Gecode 4.0.1 on)
 	virtual void print(const Space& home, const Choice& c, unsigned int a,
@@ -149,11 +160,11 @@ public:
 
 		// FILL IN HERE
 		const Description& d = static_cast<const Description&>(c);
-		int pos = d.pos; int subIntervalSize = d.val;
+		int pos = d.pos; int splitPos = d.val;
 		if (a == 0)
-			o << "x[" << pos << "] <= " << x[pos].min() + subIntervalSize;
+			o << "x[" << pos << "] <= " << splitPos;
 		else
-			o << "x[" << pos << "] > " << x[pos].min() + subIntervalSize;
+			o << "x[" << pos << "] > " << splitPos;
 
 
 	}
